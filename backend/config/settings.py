@@ -56,6 +56,11 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # migraciones desde cero. Se define ahora para evitarlo.
 AUTH_USER_MODEL = "usuarios.Usuario"
 
+# Tras login vía /api-auth/login/ (puente de sesión de la Fase 2), redirige
+# a la propia API en vez del valor por defecto de Django
+# (/accounts/profile/, que no existe en este proyecto).
+LOGIN_REDIRECT_URL = "/api/"
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",  # debe ir antes de CommonMiddleware
@@ -115,12 +120,17 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # Puente hasta que exista login JWT propio en el frontend (Fase 3):
+        # permite probar la API navegable de DRF autenticado con la sesión
+        # de tu superusuario de Django Admin.
+        "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
