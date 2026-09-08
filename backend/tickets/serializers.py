@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import serializers
 
 from categorias.serializers import CategoriaSerializer
@@ -87,14 +88,26 @@ class TicketWriteSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def validate(self, attrs):
+        estado_nuevo = attrs.get("estado", getattr(self.instance, "estado", None))
+        estado_anterior = getattr(self.instance, "estado", None) if self.instance else None
+
         # abandono_origen nunca lo manda el cliente a mano: si marca
         # estado=abandonado por la API, SIEMPRE es manual (el marcado
         # automático lo hace el comando de la Fase 8 directamente sobre
         # el modelo, sin pasar por este serializer). Así evitamos que
         # alguien falsifique un abandono como "automatico" desde fuera.
-        estado = attrs.get("estado", getattr(self.instance, "estado", None))
-        if estado == Ticket.Estado.ABANDONADO:
+        if estado_nuevo == Ticket.Estado.ABANDONADO:
             attrs["abandono_origen"] = Ticket.AbandonoOrigen.MANUAL
-        elif estado is not None and estado != Ticket.Estado.ABANDONADO:
+        elif estado_nuevo is not None and estado_nuevo != Ticket.Estado.ABANDONADO:
             attrs["abandono_origen"] = None
+
+        # fecha_resolucion: se fija sola al entrar en "resuelto" (si el
+        # cliente no la manda explícitamente) y se limpia al salir de ese
+        # estado. Sin esto, el tiempo medio de resolución del dashboard
+        # (Fase 6) no tendría datos con los que calcularse.
+        if estado_nuevo == Ticket.Estado.RESUELTO and estado_anterior != Ticket.Estado.RESUELTO:
+            attrs.setdefault("fecha_resolucion", timezone.now())
+        elif estado_anterior == Ticket.Estado.RESUELTO and estado_nuevo != Ticket.Estado.RESUELTO:
+            attrs["fecha_resolucion"] = None
+
         return attrs
