@@ -8,6 +8,11 @@ class CategoriaViewSet(viewsets.ModelViewSet):
     serializer_class = CategoriaSerializer
     filterset_fields = ["activa"]
     search_fields = ["nombre"]
+    # Sin paginación: es una tabla de referencia pequeña usada como
+    # desplegable en el frontend, no una lista que crece sin límite como
+    # los tickets. Con paginación, un desplegable con más categorías que
+    # el page_size dejaría de mostrar las últimas sin que se note por qué.
+    pagination_class = None
 
     def get_queryset(self):
         qs = super().get_queryset()
