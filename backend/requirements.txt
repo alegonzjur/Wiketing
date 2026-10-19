@@ -5,4 +5,8 @@ django-environ>=0.11
 django-filter>=24.2
 django-cors-headers>=4.4
 psycopg2-binary>=2.9
-gunicorn>=22.0
+whitenoise>=6.7
+# Servidor de producción en Windows (Gunicorn no funciona en Windows).
+waitress>=3.0
+# Solo para el Dockerfile / Linux; en Windows no se instala.
+gunicorn>=22.0; sys_platform != "win32"
