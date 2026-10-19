@@ -27,3 +27,7 @@ Thumbs.db
 
 # Docker
 *.log
+
+# Volcados de BD (contienen datos reales y hashes de contraseña)
+*.dump
+*.sql
