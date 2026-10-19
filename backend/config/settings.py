@@ -63,6 +63,7 @@ LOGIN_REDIRECT_URL = "/api/"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",  # debe ir antes de CommonMiddleware
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -149,3 +150,6 @@ SIMPLE_JWT = {
 # En producción, Nginx sirve ambos bajo el mismo origen y esto deja de
 # ser necesario, pero no molesta dejarlo configurado por variable.
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:5173"])
+
+FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"
+WHITENOISE_ROOT = FRONTEND_DIST

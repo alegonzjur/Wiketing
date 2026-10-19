@@ -2,7 +2,9 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
-
+from django.conf import settings
+from django.http import HttpResponse
+from django.urls import re_path
 from categorias.views import CategoriaViewSet
 from tickets.views import TicketViewSet, ComentarioViewSet, DashboardResumenView
 from usuarios.views import TicketingTokenObtainPairView, UsuarioActualView
@@ -11,6 +13,12 @@ router = DefaultRouter()
 router.register("categorias", CategoriaViewSet, basename="categoria")
 router.register("tickets", TicketViewSet, basename="ticket")
 router.register("comentarios", ComentarioViewSet, basename="comentario")
+
+def spa(request):
+    html = (settings.FRONTEND_DIST / "index.html").read_text(encoding="utf-8")
+    r = HttpResponse(html)
+    r["Cache-Control"] = "no-cache"
+    return r
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -26,4 +34,6 @@ urlpatterns = [
     # (útil para probar/depurar desde el navegador con tu superusuario).
     # No lo usa el frontend, que va siempre por JWT.
     path("api-auth/", include("rest_framework.urls")),
+    re_path(r"^(?!api/|admin/|api-auth/|static/|assets/).*$", spa),
 ]
+
