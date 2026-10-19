@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { listarTickets } from '../api/tickets'
-import { ESTADOS, TIPOS, PRIORIDADES } from '../constants/tickets'
+import { ESTADOS, TIPOS, PRIORIDADES, OPCIONES_FILTRO_ESTADO, ESTADO_FILTRO_DEFECTO } from '../constants/tickets'
 
 function Badge({ valor, opciones }) {
   const opcion = opciones.find((o) => o.value === valor)
@@ -19,10 +19,22 @@ export default function TicketList() {
 
   const params = Object.fromEntries(searchParams.entries())
 
+  // Si la URL no trae filtro de estado, se usa "Activos" (abierto +
+  // en_progreso) por defecto — sin escribirlo en la URL hasta que el
+  // usuario interactúe, para no disparar una petición extra al cargar
+  // ni ensuciar la URL con un valor que nadie eligió todavía.
+  const estadoEfectivo = params.estado ?? ESTADO_FILTRO_DEFECTO
+
   const cargar = useCallback(async () => {
     setCargando(true)
     try {
-      const { data } = await listarTickets(params)
+      const paramsPeticion = { ...params }
+      if (estadoEfectivo === 'todos') {
+        delete paramsPeticion.estado
+      } else {
+        paramsPeticion.estado = estadoEfectivo
+      }
+      const { data } = await listarTickets(paramsPeticion)
       setDatos(data)
     } finally {
       setCargando(false)
@@ -76,11 +88,10 @@ export default function TicketList() {
         />
         <select
           className="border rounded px-3 py-2 text-sm"
-          value={params.estado ?? ''}
+          value={estadoEfectivo}
           onChange={(e) => actualizarFiltro('estado', e.target.value)}
         >
-          <option value="">Todos los estados</option>
-          {ESTADOS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {OPCIONES_FILTRO_ESTADO.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <select
           className="border rounded px-3 py-2 text-sm"
