@@ -60,6 +60,11 @@ class TicketDetailSerializer(serializers.ModelSerializer):
     asignado_a = UsuarioResumenSerializer(read_only=True)
     historial = HistorialCambiosSerializer(many=True, read_only=True)
     comentarios = ComentarioSerializer(many=True, read_only=True)
+    tiempo_en_espera_horas = serializers.SerializerMethodField()
+
+    def get_tiempo_en_espera_horas(self, obj):
+        """Espera total en horas (incluye el periodo en curso)."""
+        return round(obj.tiempo_en_espera_total.total_seconds() / 3600, 1)
 
     class Meta:
         model = Ticket
@@ -69,6 +74,7 @@ class TicketDetailSerializer(serializers.ModelSerializer):
             "fecha_creacion", "fecha_actualizacion", "fecha_resolucion",
             "fecha_ultima_actividad", "abandono_origen",
             "tiempo_estimado", "tiempo_real",
+            "espera_desde", "tiempo_en_espera_horas",
             "historial", "comentarios",
         ]
 

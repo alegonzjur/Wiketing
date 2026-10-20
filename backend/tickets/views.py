@@ -119,8 +119,11 @@ class DashboardResumenView(APIView):
             tendencia[clave]["resueltos"] = fila["total"]
         tendencia = [tendencia[clave] for clave in sorted(tendencia.keys())]
 
+        # Tiempo de resolución = resolución - creación - tiempo en espera.
+        # Los periodos "en_espera" (pendiente de terceros) no cuentan.
         duracion_expr = ExpressionWrapper(
-            F("fecha_resolucion") - F("fecha_creacion"), output_field=DurationField()
+            F("fecha_resolucion") - F("fecha_creacion") - F("tiempo_en_espera"),
+            output_field=DurationField(),
         )
         promedio = resueltos_qs.annotate(duracion=duracion_expr).aggregate(
             promedio=Avg("duracion")

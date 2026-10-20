@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Ticket(models.Model):
@@ -16,6 +19,7 @@ class Ticket(models.Model):
     class Estado(models.TextChoices):
         ABIERTO = "abierto", "Abierto"
         EN_PROGRESO = "en_progreso", "En progreso"
+        EN_ESPERA = "en_espera", "En espera"  # pendiente de terceros: el reloj se detiene
         RESUELTO = "resuelto", "Resuelto"
         ABANDONADO = "abandonado", "Abandonado"
         CERRADO = "cerrado", "Cerrado"
@@ -75,6 +79,14 @@ class Ticket(models.Model):
         help_text="Solo relevante cuando estado='abandonado'.",
     )
 
+    # --- Tiempo en espera (el reloj del ticket se detiene) ------------------
+    # Mientras el ticket está en estado "en_espera" (pendiente de otra persona)
+    # no cuenta para el tiempo de resolución. Se mantiene en signals.py:
+    #   - tiempo_en_espera: suma de todos los periodos de espera ya cerrados.
+    #   - espera_desde: inicio del periodo abierto (null si no está en espera).
+    tiempo_en_espera = models.DurationField(default=timedelta)
+    espera_desde = models.DateTimeField(null=True, blank=True)
+
     tiempo_estimado = models.DurationField(null=True, blank=True)
     tiempo_real = models.DurationField(null=True, blank=True)
 
@@ -89,6 +101,14 @@ class Ticket(models.Model):
 
     def __str__(self):
         return f"#{self.pk} — {self.titulo}"
+
+    @property
+    def tiempo_en_espera_total(self):
+        """Espera acumulada, incluyendo el periodo en curso si lo hay."""
+        total = self.tiempo_en_espera
+        if self.espera_desde:
+            total += timezone.now() - self.espera_desde
+        return total
 
 
 class HistorialCambios(models.Model):

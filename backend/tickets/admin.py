@@ -24,7 +24,10 @@ class TicketAdmin(admin.ModelAdmin):
     list_filter = ("tipo", "estado", "prioridad", "categoria")
     search_fields = ("titulo", "descripcion")
     inlines = [ComentarioInline, HistorialCambiosInline]
-    readonly_fields = ("fecha_creacion", "fecha_actualizacion", "fecha_ultima_actividad")
+    readonly_fields = (
+        "fecha_creacion", "fecha_actualizacion", "fecha_ultima_actividad",
+        "tiempo_en_espera", "espera_desde",  # los mantiene signals.py
+    )
 
 
 @admin.register(HistorialCambios)

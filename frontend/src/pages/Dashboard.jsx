@@ -69,16 +69,17 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
         <TarjetaMetrica etiqueta="Total" valor={datos.total_tickets} />
         <TarjetaMetrica etiqueta="Abiertos" valor={datos.por_estado.abierto} colorClase="text-blue-600" />
         <TarjetaMetrica etiqueta="En progreso" valor={datos.por_estado.en_progreso} colorClase="text-yellow-600" />
+        <TarjetaMetrica etiqueta="En espera" valor={datos.por_estado.en_espera} colorClase="text-purple-600" />
         <TarjetaMetrica etiqueta="Resueltos" valor={datos.por_estado.resuelto} colorClase="text-green-600" />
         <TarjetaMetrica etiqueta="Abandonados" valor={datos.por_estado.abandonado} colorClase="text-gray-500" />
       </div>
 
       <div className="bg-white rounded-lg shadow p-4 mb-8">
-        <p className="text-xs text-gray-500 mb-1">Tiempo medio de resolución</p>
+        <p className="text-xs text-gray-500 mb-1">Tiempo medio de resolución <span className="text-gray-400">(sin contar las esperas)</span></p>
         <p className="text-2xl font-semibold text-gray-800">
           {datos.tiempo_medio_resolucion_horas != null
             ? `${datos.tiempo_medio_resolucion_horas} h`

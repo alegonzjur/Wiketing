@@ -83,6 +83,29 @@ npm install
 npm run dev  # con proxy a /api configurado en vite.config.js
 ```
 
+## Ejecución sin Docker (Windows / servidor)
+
+Un único proceso (**Waitress**) sirve la API, el admin y la web de React en el mismo puerto y origen. **WhiteNoise** entrega los estáticos y el build del frontend; no hace falta Nginx para uso local. Gunicorn no funciona en Windows, por eso Waitress.
+
+```powershell
+# 1. Frontend: compilar una vez (y tras cada cambio en frontend/)
+cd frontend
+npm install
+npm run build            # genera frontend/dist
+
+# 2. Backend
+cd ..\backend
+pip install -r requirements.txt
+copy .env.example .env   # edita SECRET_KEY, ALLOWED_HOSTS y DATABASE_URL
+python manage.py migrate # sobre una BD ya restaurada debe decir "No migrations to apply"
+python manage.py collectstatic --noinput   # estáticos del admin
+python run.py            # http://127.0.0.1:8001
+```
+
+- `WAITRESS_HOST` / `WAITRESS_PORT` cambian la dirección (por defecto `127.0.0.1:8001`). Para abrirlo a la red: `0.0.0.0` + regla de cortafuegos + el nombre/IP en `DJANGO_ALLOWED_HOSTS`.
+- Sin HTTPS: Waitress no hace TLS, así que el login viaja en claro por la red. Aceptable en local; para abrirlo a más usuarios, poner un proxy HTTPS delante (y arrancar con `WAITRESS_TRUST_PROXY=1`).
+- Se trasladó la BD desde Docker con `pg_dump -Fc --no-owner --no-privileges` + `pg_restore` (no `dumpdata/loaddata`, para no disparar los signals de auditoría).
+
 ## API — endpoints principales
 
 | Endpoint | Método(s) | Notas |
@@ -103,11 +126,15 @@ npm run dev  # con proxy a /api configurado en vite.config.js
 - **Auditoría automática vía signals**, no en las vistas: cualquier cambio de `estado`/`prioridad`/`asignado_a` queda en `HistorialCambios` sin que el código de la API tenga que acordarse. Quien guarda el ticket debe asignar `instance._usuario_modificacion` antes de `.save()` para que el cambio no quede como "automático".
 - **`fecha_ultima_actividad`** se actualiza con cualquier cambio relevante o comentario, **excepto** cuando el cambio es el propio marcado automático de abandono (evita que el cron de la Fase 8 reinicie su propio contador).
 - **`fecha_resolucion`** se autorellena al entrar en estado `resuelto` y se limpia al salir de ese estado — necesario para que el tiempo medio de resolución del dashboard tenga datos.
+- **Estado `en_espera` (reloj detenido)**: para tickets pendientes de terceros. Los signals acumulan en `tiempo_en_espera` cada periodo en espera (`espera_desde` guarda el que está abierto) y el tiempo medio de resolución del dashboard se calcula como *resolución − creación − espera*. Se cuenta también al pasar de `en_espera` directamente a `resuelto`/`abandonado`. La regla de abandono de 30 días de la Fase 8 **no debe considerar** tickets `en_espera` (solo `abierto`/`en_progreso`).
 - **Tokens JWT solo en memoria (`access`) + `localStorage` (`refresh`)**: trade-off de seguridad asumido para una herramienta interna de un único usuario. Ver `frontend/src/context/AuthContext.jsx` para el detalle.
 - **Choices duplicados entre backend y frontend** (`backend/tickets/models.py` ↔ `frontend/src/constants/tickets.js`): si cambias un valor en un sitio, hay que actualizar el otro a mano.
 - **Categorías sin paginación**: es una tabla de referencia pequeña usada como desplegable, no una lista que crece sin límite.
 
 ## Decisiones y problemas resueltos durante el desarrollo
+
+- **`DEBUG` ignoraba `DJANGO_DEBUG=False`**: `env("DJANGO_DEBUG")` sin cast devuelve el texto `"False"`, que es verdadero en Python, así que `DEBUG` quedaba activo con cualquier valor. Corregido con `env.bool(...)`.
+- **`package-lock.json` desfasado** (faltaba recharts): `npm ci` falla, `npm install` funciona (y es lo que usa el Dockerfile).
 
 - **Puerto 5432 ocupado**: si tienes otro proyecto con Postgres en Docker usando el 5432 del host, este proyecto expone el suyo en **5433** (`docker-compose.yml`, servicio `postgres`). El backend sigue hablando con Postgres por `postgres:5432` dentro de la red de Docker; el cambio solo afecta a accesos desde fuera de Docker.
 - **Healthcheck de Postgres con `-d` explícito**: sin especificar la base de datos, `pg_isready` asume que se llama igual que el usuario y falla en bucle.
@@ -116,6 +143,9 @@ npm run dev  # con proxy a /api configurado en vite.config.js
 
 ## Limitaciones conocidas (no resueltas todavía)
 
+- El filtro por defecto del listado sigue siendo "abiertos y en progreso": los tickets `en_espera` no aparecen hasta elegir "Todos" o "En espera" (cambiar `ESTADO_FILTRO_DEFECTO` en `frontend/src/constants/tickets.js` si se prefiere verlos).
+- Los tickets que ya estaban resueltos antes de existir `en_espera` no tienen esperas registradas (su tiempo no cambia). Las esperas anteriores a este cambio no se pueden reconstruir.
+- Los tests se lanzan con `python manage.py test tickets.tests` (con `tickets` a secas falla por el `backend/__init__.py` vacío) y el usuario de PostgreSQL necesita permiso `CREATEDB`.
 - El endpoint de comentarios no está anidado bajo `/tickets/{id}/comentarios/` — hay que mandar el `ticket` en el body.
 - No existe todavía asignación de tickets a otros usuarios desde la UI (el campo `asignado_a` existe en el modelo y la API, pero no hay selector en el frontend — tiene sentido cuando haya multi-usuario real).
 - El bundle de producción del frontend pesa ~190KB comprimidos, principalmente por Recharts; no se ha aplicado code-splitting.

@@ -100,6 +100,15 @@ export default function TicketDetail() {
         </div>
       </div>
 
+      {(ticket.espera_desde || ticket.tiempo_en_espera_horas > 0) && (
+        <p className="text-sm text-purple-700 bg-purple-50 rounded px-3 py-2 mb-8">
+          {ticket.espera_desde
+            ? `En espera desde el ${new Date(ticket.espera_desde).toLocaleString('es-ES')}. `
+            : ''}
+          Tiempo total en espera: {ticket.tiempo_en_espera_horas} h (no cuenta para el tiempo de resolución).
+        </p>
+      )}
+
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-gray-600 mb-3">Comentarios</h2>
         <div className="space-y-3 mb-4">

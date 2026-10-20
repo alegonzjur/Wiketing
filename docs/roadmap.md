@@ -127,6 +127,7 @@
 **Decisiones:**
 - Empezamos con **management command** (`revisar_abandonados`) + tarea programada del SO (Task Scheduler de Windows, ya que el servidor es Windows), **no Celery todavía** — evita meter Redis antes de necesitarlo
 - El comando actualiza `fecha_ultima_actividad` como criterio (ya mantenido por los signals de la Fase 1) y marca `estado='abandonado'`, `abandono_origen='automatico'`
+- El comando solo considera tickets en `abierto` o `en_progreso`: un ticket `en_espera` (pendiente de terceros, reloj detenido) nunca se marca como abandonado
 - Log propio del comando (fichero o `HistorialCambios` con usuario nulo) para poder auditar qué se marcó y cuándo
 
 **Entregable:** comando ejecutable manualmente primero, luego programado, verificado con tickets de prueba con fecha manipulada.

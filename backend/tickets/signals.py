@@ -36,6 +36,33 @@ def cachear_valores_previos(sender, instance, **kwargs):
     else:
         instance._valores_previos = None
 
+    _actualizar_tiempo_en_espera(instance, instance._valores_previos)
+
+
+def _actualizar_tiempo_en_espera(instance, anterior):
+    """Detiene/reanuda el reloj del ticket al entrar/salir de "en_espera".
+
+    Se hace en pre_save (antes de escribir) para que los campos viajen en el
+    mismo UPDATE y no haga falta una segunda escritura. Se parte siempre de
+    los valores guardados en BD (`anterior`), no de lo que traiga la
+    instancia, para que nunca se pueda falsear el acumulado desde fuera.
+    """
+    en_espera = Ticket.Estado.EN_ESPERA
+    estado_anterior = anterior.estado if anterior else None
+    ahora = timezone.now()
+
+    if instance.estado == en_espera and estado_anterior != en_espera:
+        # Entra en espera (o se crea ya en espera): abre el periodo.
+        instance.espera_desde = ahora
+    elif estado_anterior == en_espera and instance.estado != en_espera:
+        # Sale de espera (a cualquier estado, incluido resuelto/abandonado):
+        # cierra el periodo y lo suma al acumulado.
+        acumulado = anterior.tiempo_en_espera
+        if anterior.espera_desde:
+            acumulado += ahora - anterior.espera_desde
+        instance.tiempo_en_espera = acumulado
+        instance.espera_desde = None
+
 
 @receiver(post_save, sender=Ticket)
 def registrar_historial_y_actividad(sender, instance, created, **kwargs):
